@@ -1,0 +1,240 @@
+{
+  "name": "My workflow",
+  "nodes": [
+    {
+      "parameters": {
+        "formTitle": "Student Enrollment ETL",
+        "formDescription": "Upload your raw student enrollment CSV",
+        "formFields": {
+          "values": [
+            {
+              "fieldLabel": "Upload Student CSV",
+              "fieldType": "file"
+            }
+          ]
+        },
+        "options": {}
+      },
+      "type": "n8n-nodes-base.formTrigger",
+      "typeVersion": 2.6,
+      "position": [
+        -576,
+        -16
+      ],
+      "id": "dda3d054-b8ce-45fc-a9be-04e369b9cb0f",
+      "name": "On form submission",
+      "webhookId": "dd66538e-1ef0-4a2d-bfcb-aab73035f5b9"
+    },
+    {
+      "parameters": {
+        "binaryPropertyName": "Upload_Student_CSV",
+        "options": {}
+      },
+      "type": "n8n-nodes-base.extractFromFile",
+      "typeVersion": 1.2,
+      "position": [
+        -400,
+        -16
+      ],
+      "id": "f8a6af2a-5c78-4be7-aacf-579113c29ba8",
+      "name": "Extract from File"
+    },
+    {
+      "parameters": {
+        "jsCode": "\nconst items = $input.all();\n\nfunction cleanText(value) {\n  return String(value ?? \"\").trim();\n}\n\nfunction titleCase(value) {\n  return cleanText(value)\n    .toLowerCase()\n    .replace(/\\b[a-z]/g, c => c.toUpperCase());\n}\n\nfunction cleanPhone(value) {\n  if (value === null || value === undefined || value === \"\") {\n    return \"\";\n  }\n\n  return String(value).replace(/\\.0$/, \"\").trim();\n}\n\nfunction cleanCourse(value) {\n  const course = cleanText(value).toLowerCase();\n\n  const courses = {\n    \"ml\": \"Machine Learning\",\n    \"machine learning\": \"Machine Learning\",\n    \"python\": \"Python\",\n    \"data science\": \"Data Science\"\n  };\n\n  return courses[course] || titleCase(course);\n}\n\nreturn items.map(item => {\n  const row = item.json;\n\n  const email = cleanText(row.Email).toLowerCase();\n\n  const validEmail =\n    /^[^\\s@]+@[^\\s@]+\\.[^\\s@]+$/.test(email);\n\n  return {\n    json: {\n      Student_ID: cleanText(row.Student_ID).toUpperCase(),\n      Name: titleCase(row.Name),\n      Email: email,\n      Phone: cleanPhone(row.Phone),\n      Course: cleanCourse(row.Course),\n      Fee_Paid: cleanText(row.Fee_Paid).toLowerCase(),\n      City: titleCase(row.City),\n      Enrolled_Date: cleanText(row.Enrolled_Date),\n      Email_Valid: validEmail\n    }\n  };\n});\n"
+      },
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        -192,
+        -16
+      ],
+      "id": "bb2a3021-4698-4f70-8a27-66934b0e137b",
+      "name": "Code in JavaScript"
+    },
+    {
+      "parameters": {
+        "options": {}
+      },
+      "type": "n8n-nodes-base.removeDuplicates",
+      "typeVersion": 2,
+      "position": [
+        -32,
+        -16
+      ],
+      "id": "ef8e885d-ed69-46da-bab0-ea2732748dc8",
+      "name": "Remove Duplicates"
+    },
+    {
+      "parameters": {
+        "conditions": {
+          "options": {
+            "caseSensitive": true,
+            "leftValue": "",
+            "typeValidation": "loose",
+            "version": 4
+          },
+          "conditions": [
+            {
+              "id": "1ae73734-f4e0-4b6c-8767-d22d04f440d6",
+              "leftValue": "={{ $json.Fee_Paid }}",
+              "rightValue": "yes",
+              "operator": {
+                "type": "string",
+                "operation": "equals"
+              }
+            },
+            {
+              "id": "cf38f67f-3d2a-4d56-83d1-c5cfe504f57b",
+              "leftValue": "={{ $json.Email_Valid }}",
+              "rightValue": true,
+              "operator": {
+                "type": "boolean",
+                "operation": "true",
+                "singleValue": true
+              }
+            }
+          ],
+          "combinator": "and"
+        },
+        "looseTypeValidation": true,
+        "options": {}
+      },
+      "type": "n8n-nodes-base.filter",
+      "typeVersion": 2.4,
+      "position": [
+        144,
+        -16
+      ],
+      "id": "fe70c14f-f917-4424-815f-382c45301fd0",
+      "name": "Filter"
+    },
+    {
+      "parameters": {
+        "options": {
+          "fileName": "student_enrollment_clean.csv"
+        }
+      },
+      "type": "n8n-nodes-base.convertToFile",
+      "typeVersion": 1.2,
+      "position": [
+        320,
+        -16
+      ],
+      "id": "d53cbc5a-d5bb-4e5e-afe7-1917500fc71c",
+      "name": "Convert to File"
+    },
+    {
+      "parameters": {
+        "driveId": {
+          "__rl": true,
+          "mode": "list",
+          "value": "My Drive"
+        },
+        "folderId": {
+          "__rl": true,
+          "mode": "list",
+          "value": "root",
+          "cachedResultName": "/ (Root folder)"
+        },
+        "options": {}
+      },
+      "type": "n8n-nodes-base.googleDrive",
+      "typeVersion": 3,
+      "position": [
+        544,
+        -16
+      ],
+      "id": "06a7972a-20fc-4e00-b6be-5c0211d187ae",
+      "name": "Upload file",
+      "credentials": {
+        "googleDriveOAuth2Api": {
+          "id": "Vw8V7loY1KW8w5lT",
+          "name": "Google Drive account"
+        }
+      }
+    }
+  ],
+  "pinData": {},
+  "connections": {
+    "On form submission": {
+      "main": [
+        [
+          {
+            "node": "Extract from File",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Extract from File": {
+      "main": [
+        [
+          {
+            "node": "Code in JavaScript",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Code in JavaScript": {
+      "main": [
+        [
+          {
+            "node": "Remove Duplicates",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Remove Duplicates": {
+      "main": [
+        [
+          {
+            "node": "Filter",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Filter": {
+      "main": [
+        [
+          {
+            "node": "Convert to File",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Convert to File": {
+      "main": [
+        [
+          {
+            "node": "Upload file",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    }
+  },
+  "active": false,
+  "settings": {
+    "executionOrder": "v1",
+    "binaryMode": "separate"
+  },
+  "versionId": "613dab9e-f5e7-4515-89b7-78d167e1f4a4",
+  "meta": {
+    "templateCredsSetupCompleted": true,
+    "instanceId": "ca18382fd78710570b957a22959fd7e8d7be3ab6e5946d38b74628bbc232cb70"
+  },
+  "nodeGroups": [],
+  "id": "3YSgKw66gB8ONYVR",
+  "tags": []
+}
